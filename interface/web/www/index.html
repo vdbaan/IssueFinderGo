@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<!--suppress ALL -->
+<html>
+<head>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+    <!--    <link href="./assets/css/roboto.css" rel="stylesheet">-->
+    <!--    <link href="./assets/css/materialdesignicons.min.css" rel="stylesheet">-->
+    <!--    <link href="./assets/css/vuetify.min.css" rel="stylesheet">-->
+    <link href="./assets/css/app.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+    <title>Issue Finder - Server</title>
+</head>
+<body>
+<div id="app">
+    <v-app dark>
+        <v-navigation-drawer app
+                             v-model="drawer"
+                             app
+                             dark
+        >
+            <v-toolbar-title class="ph-6 black white--text" style="padding:17px;">Issue Finder</v-toolbar-title>
+            <div dark v-cloak @drop.prevent="addFile" @dragover.prevent class="white--text">
+                <v-list-item>
+                    <v-list-item-content>
+                        <v-list-item-title>
+                            Files to Upload <small>(Drag them over)</small>
+                        </v-list-item-title>
+                    </v-list-item-content>
+
+                </v-list-item>
+                <div class="fileSection">
+                    <ul>
+                        <li v-for="file in files">
+                            {{ file.name }} ({{ file.size | kb }} kb)
+                            <button @click="removeFile(file)" title="Remove">X</button>
+                        </li>
+                    </ul>
+                </div>
+                <v-btn dense color="green" :disabled="uploadDisabled"  @click="upload">Upload</v-btn>
+            </div>
+            <v-divider class="my-2"></v-divider>
+            <v-spacer></v-spacer>
+            <div>
+                <v-list-item>
+                    <v-list-item-content>
+                        <v-list-item-title>
+                            Columns
+                        </v-list-item-title>
+                    </v-list-item-content>
+                </v-list-item>
+                <v-combobox
+                        dense
+                        filled
+                        multiple
+                        small-chips
+                        :items="availableHeaders"
+                        v-model="selectedHeaders"
+                ></v-combobox>
+            </div>
+            <v-divider class="my-2"></v-divider>
+            <v-spacer></v-spacer>
+
+            <v-list>
+                <v-list-item
+                        dense
+                        link>
+                    <v-list-item-icon>
+                        <v-icon>mdi-undo-variant</v-icon>
+                    </v-list-item-icon>
+                    <v-list-item-content
+                            @click="resetFindings">
+                        <v-list-item-title>Reset</v-list-item-title>
+                    </v-list-item-content>
+                </v-list-item>
+                <v-list-item
+                        dense
+                        link>
+                    <v-list-item-icon>
+                        <v-icon>mdi-export</v-icon>
+                    </v-list-item-icon>
+                    <v-list-item-content>
+                        <v-list-item-title>Export</v-list-item-title>
+                    </v-list-item-content>
+                </v-list-item>
+            </v-list>
+        </v-navigation-drawer>
+        <v-app-bar app dark>
+            <v-app-bar-nav-icon
+                    @click="drawer = !drawer"
+            ></v-app-bar-nav-icon>
+
+            <v-toolbar-title
+                    class="pr-5 w-160"
+                    v-show="!drawer"
+            >Issue Finder
+            </v-toolbar-title>
+            <!--            <template>-->
+            <v-container fluid class="mt-1">
+                <v-row>
+                    <v-combobox
+                            dense
+                            v-model="selectedFilters"
+                            :filter="hideFilter"
+                            :hide-no-data="!search"
+                            :items="availableFilters"
+                            :search-input.sync="search"
+                            hide-selected
+                            label="Filter ..."
+                            multiple
+                            small-chips
+                            solo
+                            clearable
+                            class="pt-4"
+                    >
+                        <template v-slot:no-data>
+                            <v-list-item>
+                                {{ search }}
+                            </v-list-item>
+                        </template>
+                        <template v-slot:selection="{ attrs, item, parent, selected }">
+                            <v-chip
+                                    v-if="item === Object(item)"
+                                    v-bind="attrs"
+                                    :input-value="selected"
+                                    label
+                                    small
+                            >
+            <span class="pr-2">
+              {{ item.text }}
+            </span>
+                                <v-icon
+                                        small
+                                        color="red"
+                                        @click="parent.selectItem(item)"
+                                >
+                                    mdi-close-octagon-outline
+                                </v-icon>
+                            </v-chip>
+                        </template>
+                        <template v-slot:item="{ index, item }">
+                            {{ item.text }}
+
+
+                        </template>
+                    </v-combobox>
+                </v-row>
+            </v-container>
+            <!--            </template>-->
+            <!--            <v-menu-->
+            <!--                    left-->
+            <!--                    bottom-->
+            <!--            >-->
+            <!--                <template v-slot:activator="{ on, attrs }">-->
+            <!--                    <v-btn-->
+            <!--                            icon-->
+            <!--                            v-bind="attrs"-->
+            <!--                            v-on="on"-->
+            <!--                    >-->
+            <!--                        <v-icon>mdi-dots-vertical</v-icon>-->
+            <!--                    </v-btn>-->
+            <!--                </template>-->
+
+            <!--                <v-list>-->
+            <!--                    <v-list-item-->
+            <!--                            v-for="n in 5"-->
+            <!--                            :key="n"-->
+            <!--                            @click="() => {}"-->
+            <!--                    >-->
+            <!--                        <v-list-item-title>Option {{ n }}</v-list-item-title>-->
+            <!--                    </v-list-item>-->
+            <!--                </v-list>-->
+            <!--            </v-menu>-->
+            <template v-slot:extension>
+                <v-tabs v-model="tab" align-with-title>
+                    <v-tabs-slider color="green"></v-tabs-slider>
+                    <v-tab key="findingstab">Findings</v-tab>
+                    <v-tab key="issues" :disabled="issuesDisabled">Issues</v-tab>
+                </v-tabs>
+            </template>
+        </v-app-bar>
+        <v-main>
+            <v-tabs-items v-model="tab">
+                <v-tab-item key="findingstab">
+
+                    <v-data-table
+                            :headers="visibleHeaders"
+                            :items="indexedFindings"
+                            :expanded.sync="expanded"
+                            show-expand
+                            item-key="id"
+                            multi-sort
+                            dense
+                            :loading="loadingData"
+                            loading-text="Loading... Please wait"
+                            :footer-props="{'items-per-page-options':[25, 50, 100, -1],'show-first-last-page':true, 'show-current-page':true}"
+                    >
+                        <template v-slot:item.severity="{ item }">
+                            <v-chip
+                                    :color="getColor(item.severity)"
+                                    dark
+                                    small
+                            >
+                                {{ item.severity | severity2risk }}
+                            </v-chip>
+                        </template>
+                        <template v-slot:expanded-item="{ headers, item }">
+                            <td :colspan="headers.length">
+                                <div v-for="(val, key) in item" v-if="key!='id'">
+                                    {{ key }}: {{ val }}
+                                </div>
+                            </td>
+                        </template>
+                    </v-data-table>
+                </v-tab-item>
+                <v-tab-item key="issues">
+                    Show issues here
+                </v-tab-item>
+            </v-tabs-items>
+        </v-main>
+        <v-footer app dense padless class="flex justify-end pr-5">
+            <template>
+                <div class="text-center">
+                    <v-menu
+                            open-on-hover
+                            top
+                            offset-y
+                    >
+                        <template v-slot:activator="{ on, attrs }">
+                            <div v-bind="attrs"
+                                 v-on="on"> {{ uniqueLabel }}
+                            </div>
+
+                        </template>
+
+                        <v-list>
+                            <v-list-item
+                                    v-for="(item, index) in footerActions"
+                                    :key="index"
+                                    @click="item.action"
+                                    dense
+                            >
+                                <v-list-item-title>{{ item.title }}</v-list-item-title>
+                            </v-list-item>
+                        </v-list>
+                    </v-menu>
+                </div>
+            </template>
+        </v-footer>
+    </v-app>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://unpkg.com/vue-toasted"></script>
+<!--<script src="./assets/js/vue.js"></script>-->
+<!--<script src="./assets/js/vuetify.js"></script>-->
+<!--<script src="./assets/js/axios.min.js"></script>-->
+<!--<script src="./components/splash.js"></script>-->
+<!--<script src="./components/dialog.js"></script>-->
+<script>
+    Vue.config.devtools = true;
+
+    Vue.use(Toasted, {
+        theme: "toasted-primary",
+        position: "top-right",
+        duration: 1000,
+        containerClass: "v-application",
+        action: {
+            text: 'X',
+            onClick: (e, toastObject) => {
+                toastObject.goAway(0);
+            }
+        },
+    });
+
+    Vue.filter('kb', val => {
+        return Math.floor(val / 1024);
+    });
+    Vue.filter('severity2risk', val => {
+        switch (val) {
+            case 0:
+                return "Unknown";
+            case 1:
+                return "Info";
+            case 2:
+                return "Low";
+            case 3:
+                return "Medium";
+            case 4:
+                return "High";
+            case 5:
+                return "CRITICAL";
+        }
+    })
+    const myapp = new Vue({
+        el: '#app',
+        vuetify: new Vuetify({
+            theme: {
+                themes: {
+                    dark: {
+                        primary: '#607d8b',
+                        secondary: '#673ab7',
+                        accent: '#03a9f4',
+                        error: '#f44336',
+                        warning: '#ff9800',
+                        info: '#3f51b5',
+                        success: '#4caf50',
+                    },
+                    light: {
+                        primary: '#607d8b',
+                        secondary: '#673ab7',
+                        accent: '#03a9f4',
+                        error: '#f44336',
+                        warning: '#ff9800',
+                        info: '#3f51b5',
+                        success: '#4caf50',
+                    },
+                },
+            },
+        }),
+        data() {
+            return {
+                drawer: true,
+                files: [],
+                selected: ["Critical", "High", "Medium", "Low", "Info", "Unknown"],
+                tab: null,
+                uniqueLabel: "## Unique IPs",
+                footerActions: [
+                    {title: 'Copy Unique Ip', action: this.copyUniqueIPs},
+                    {title: 'Copy Unique IP/Ports', action: this.copyUniqueIPPorts},
+                ],
+                //
+                availableHeaders: [
+                    {index: 0, text: 'Scanner', value: 'Scanner'},
+                    {index: 1, text: 'IP', value: 'Ip'},
+                    {index: 2, text: 'Hostname', value: 'Hostname'},
+                    {index: 3, text: 'Port', value: 'Port'},
+                    {index: 4, text: 'Protocol', value: 'Protocol'},
+                    {index: 5, text: 'Status', value: 'PortStatus'},
+                    {index: 6, text: 'Service', value: 'Service'},
+                    {index: 7, text: 'Plugin', value: 'Plugin'},
+                    {index: 8, text: 'CVSS', value: 'BaseCvss'},
+                    {index: 9, text: 'Risk', value: 'severity'}
+                ],
+                selectedHeaders: [
+                    {index: 0, text: 'Scanner', value: 'Scanner'},
+                    {index: 1, text: 'IP', value: 'Ip'},
+                    {index: 3, text: 'Port', value: 'Port'},
+                    {index: 6, text: 'Service', value: 'Service'},
+                    {index: 7, text: 'Plugin', value: 'Plugin'},
+                    {index: 9, text: 'Risk', value: 'severity'}
+                ],
+                findings: [],
+                UniqueIps: [],
+                UniqueIpPorts: [],
+                //  https://vuetifyjs.com/en/components/combobox/#advanced-custom-options
+                activator: null,
+                attach: null,
+                availableFilters: [
+                    {header: 'Select an option or create one'},
+                    {text: "IP != 127.0.0.1"},
+                    {text: "SCANNER == 'nmap'"},
+                    {text: "SERVICE LIKE 'http'"},
+                    {text: "PORT LIKE 443"},
+                    {text: "!EXPLOITABLE"},
+                    {text: "(SERVICE LIKE 'SMB') && EXPLOITABLE"},
+                ],
+                menu: false,
+                selectedFilters: [],
+                x: 0,
+                search: null,
+                y: 0,
+                // data table
+                disablePagination: true,
+                hideDefaultFooter: true,
+                results: [],
+                expanded: [],
+                singleExpand: false,
+                loadingData: false,
+            }
+        },
+        computed: {
+            // File dropper
+            uploadDisabled() {
+                return this.files.length === 0;
+            },
+            // headerCombo
+            visibleHeaders() {
+                this.selectedHeaders.sort(function (first, second) {
+                    return first['index'] - second['index']
+                });
+                return this.selectedHeaders;
+            },
+            indexedFindings() {
+                return this.findings.map((item, index) => ({
+                    id: index,
+                    ...item
+                }))
+            },
+            issuesDisabled() {
+                return this.findings.length === 0;
+            }
+
+        },
+        watch: {
+            // combobox filter
+            selectedFilters(val, prev) {
+                if (val.length === prev.length) return
+                this.selectedFilters = val.map(v => {
+                    if (typeof v === 'string') {
+                        v = {
+                            text: v,
+                        }
+                        this.availableFilters.push(v)
+                        axios.post('/api/filters', v)
+                            .then(res => {
+                            })
+                    }
+                    return v
+                })
+                this.getFindings()
+            },
+        },
+        mounted() {
+            axios.get('/api/filters')
+                .then(res => {
+                    // this.availableFilters = res.data;
+                })
+            this.getFindings()
+        },
+        methods: {
+            //
+            getColor(risk) {
+                switch (risk) {
+                    case 1:
+                        return 'cyan';
+                    case 2:
+                        return 'light-green';
+                    case 3:
+                        return 'amber';
+                    case 4:
+                        return 'red';
+                    case 5:
+                        return '#d81b60';
+                }
+            },
+            // File dropper
+            addFile(e) {
+                let droppedFiles = e.dataTransfer.files;
+                if (!droppedFiles) return;
+                // this tip, convert FileList to array, credit: https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
+                ([...droppedFiles]).forEach(f => {
+                    this.files.push(f);
+                });
+            },
+            removeFile(file) {
+                this.files = this.files.filter(f => {
+                    return f != file;
+                });
+            },
+            click(item) {
+                alert(item);
+            },
+            async upload() {
+                this.loadingData = true;
+                let promises = [];
+                try {
+                    this.files.forEach((f, x) => {
+                        let formData = new FormData();
+                        formData.append('file' + (x + 1), f);
+                        promises.push(this.uploadFile(f.name, formData));
+                    });
+                    this.files = [];
+                    // grab new data
+                    await Promise.all(promises);
+                    this.getFindings();
+
+                } finally {
+                    this.loadingData = false;
+                }
+            },
+            uploadFile(filename, formData) {
+                return axios.post('/api/file/upload', formData)
+                    .then(res => {
+                        this.$toasted.show(filename + " parsed with: " + res, {type: 'success'})
+                        console.log('done uploading', res);
+                    })
+                    .catch(e => {
+                        this.$toasted.show("Got error: " + JSON.stringify(e.message))
+                        console.error(JSON.stringify(e.message));
+                    })
+            },
+            // combobox filter
+            hideFilter(item, queryText, itemText) {
+                if (item.header) return false
+
+                const hasValue = val => val != null ? val : ''
+
+                const text = hasValue(itemText)
+                const query = hasValue(queryText)
+
+                return text.toString()
+                    .toLowerCase()
+                    .indexOf(query.toString().toLowerCase()) > -1
+            },
+            copyTextToClipboard(text) {
+                if (!navigator.clipboard) {
+                    this.fallbackCopyTextToClipboard(text);
+                    return;
+                }
+                navigator.clipboard.writeText(text).then(function () {
+                    console.log('Async: Copying to clipboard was successful!');
+                }, function (err) {
+                    console.error('Async: Could not copy text: ', err);
+                });
+            },
+            copyUniqueIPs() {
+                this.UniqueIps.sort();
+                this.copyTextToClipboard(this.UniqueIps)
+            },
+            copyUniqueIPPorts() {
+                this.UniqueIpPorts.sort();
+                this.copyTextToClipboard(this.UniqueIpPorts)
+            },
+            resetFindings() {
+                axios.get('/api/reset')
+                    .then(res => {
+                        this.getFindings()
+                        this.selectedFilters = []
+                    })
+            },
+            getFindings() {
+                axios.post('/api/findings', {filters: this.selectedFilters})
+                    .then(res => {
+                        this.findings = res.data.Findings;
+                        this.UniqueIps = res.data.UniqueIps;
+                        this.UniqueIpPorts = res.data.UniqueIpPorts;
+                        if (res.data.UniqueIps.length == 1) {
+                            this.uniqueLabel = ' 1 unique IP';
+                        } else {
+                            this.uniqueLabel = res.data.UniqueIps.length + ' unique IPs';
+                        }
+                    })
+            }
+        }
+    })
+</script>
+</body>
+</html>
