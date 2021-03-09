@@ -6,7 +6,7 @@ compile:
 
 generate:
 	go generate ./...
-	cd
+	wget http://www.antlr.org/download/antlr-4.9-complete.jar
 	java -jar antlr-4.9-complete.jar -Dlanguage=Go -visitor -o ./infra/filters/parser ./infra/filters/Predicate.g4
 
 build: generate compile
