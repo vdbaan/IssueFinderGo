@@ -1,8 +1,9 @@
 hello:
-	echo "Hello"
+	@echo "Hello"
 
-compile:
-	go build -o bin/main app/server/issuefinder.go -o issuefinder
+compile: generate
+	GOOS=windows GOARCH=amd64 go get -v
+	GOOS=windows GOARCH=amd64 go build -o bin/issuefinder.exe -ldflags app/server/issuefinder.go
 
 generate:
 	go generate ./...
@@ -15,3 +16,7 @@ run:
 	go run app/server/issuefinder.go
 
 all: hello build
+
+test:
+	env GOOS=windows GOARCH=amd64 go test -v ./...
+

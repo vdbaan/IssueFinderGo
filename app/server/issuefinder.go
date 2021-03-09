@@ -17,6 +17,16 @@ import (
 )
 
 func main() {
+	cli.AppHelpTemplate = `NAME:
+{{.Name}} [options]
+
+OPTIONS:
+   --debug, -d             show debug information
+   --port value, -p value  port where to run the service (default: random)
+   --no-webpage            do not automatically open the web page
+   --help, -h              show help
+
+`
 	app := &cli.App{
 		Name: "issuefinder",
 		Flags: []cli.Flag{
@@ -26,15 +36,18 @@ func main() {
 				Usage:   "show debug information",
 			},
 			&cli.IntFlag{
-				Name:    "port",
-				Value:   0,
-				Aliases: []string{"p"},
-				Usage:   "port where to run the service (default: random)",
+				Name:        "port",
+				Value:       0,
+				Aliases:     []string{"p"},
+				Usage:       "port where to run the service",
+				DefaultText: "random",
 			},
 			&cli.BoolFlag{
 				Name:  "no-webpage",
-				Value: false,
 				Usage: "do not automatically open the web page",
+			},
+			&cli.BoolFlag{
+				Name: "live",
 			},
 		},
 		Action: RunWebServer,
@@ -53,13 +66,14 @@ func RunWebServer(c *cli.Context) error {
 	address := fmt.Sprintf("127.0.0.1:%d", c.Int("port"))
 	webserver := web.NewWebServer(address, config)
 
+	webserver.RunLive(c.Bool("live"))
 	webserver.SetDebug(c.Bool("debug"))
 
 	// launch the browser and open the page to this
 	go func() {
 		<-time.After(100 * time.Millisecond)
 		if !c.Bool("no-webpage") {
-			open(fmt.Sprintf("http://%s/index.tml", address))
+			open(fmt.Sprintf("http://%s/index.html", webserver.GetListeningAddress()))
 		}
 	}()
 	return webserver.Start()

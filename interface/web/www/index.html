@@ -11,17 +11,26 @@
     <link href="./assets/css/app.css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
     <title>Issue Finder - Server</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/vue-toasted"></script>
+    <!--<script src="./assets/js/vue.js"></script>-->
+    <!--<script src="./assets/js/vuetify.js"></script>-->
+    <!--<script src="./assets/js/axios.min.js"></script>-->
+    <script src="./components/splash.js"></script>
 </head>
 <body>
 <div id="app">
-    <v-app dark>
+    <!--    <splash-screen></splash-screen>-->
+    <v-app dark hidden>
         <v-navigation-drawer app
                              v-model="drawer"
                              app
                              dark
         >
             <v-toolbar-title class="ph-6 black white--text" style="padding:17px;">Issue Finder</v-toolbar-title>
-            <div dark v-cloak @drop.prevent="addFile" @dragover.prevent class="white--text">
+            <div fluid dark v-cloak @drop.prevent="addFile" @dragover.prevent class="white--text">
                 <v-list-item>
                     <v-list-item-content>
                         <v-list-item-title>
@@ -38,7 +47,7 @@
                         </li>
                     </ul>
                 </div>
-                <v-btn dense color="green" :disabled="uploadDisabled"  @click="upload">Upload</v-btn>
+                <v-btn small color="green" :disabled="uploadDisabled" @click="upload" class="mt-1 ml-2">Upload</v-btn>
             </div>
             <v-divider class="my-2"></v-divider>
             <v-spacer></v-spacer>
@@ -173,7 +182,7 @@
             <!--                </v-list>-->
             <!--            </v-menu>-->
             <template v-slot:extension>
-                <v-tabs v-model="tab" align-with-title>
+                <v-tabs v-model="active_tab" align-with-title>
                     <v-tabs-slider color="green"></v-tabs-slider>
                     <v-tab key="findingstab">Findings</v-tab>
                     <v-tab key="issues" :disabled="issuesDisabled">Issues</v-tab>
@@ -181,7 +190,7 @@
             </template>
         </v-app-bar>
         <v-main>
-            <v-tabs-items v-model="tab">
+            <v-tabs-items v-model="active_tab" style="height:100%">
                 <v-tab-item key="findingstab">
 
                     <v-data-table
@@ -214,8 +223,34 @@
                         </template>
                     </v-data-table>
                 </v-tab-item>
-                <v-tab-item key="issues">
-                    Show issues here
+                <v-tab-item key="issues" style="height:100%">
+                        <v-row style="height:100%">
+                            <v-col cols="8">
+                                <v-data-table
+
+                                ></v-data-table>
+                            </v-col>
+                            <v-col col="4" style="height:100%">
+                                <v-container style="height:100%">
+                                    <v-card style="height:25%">
+                                        <v-card-title>Description</v-card-title>
+                                        <v-card-text>desc desc</v-card-text>
+                                    </v-card>
+                                    <v-card style="height:25%">
+                                        <v-card-title>Recommendations</v-card-title>
+                                        <v-card-text>rec rec</v-card-text>
+                                    </v-card>
+                                    <v-card style="height:25%">
+                                        <v-card-title>Evidence</v-card-title>
+                                        <v-card-text>this tha</v-card-text>
+                                    </v-card>
+                                    <v-card style="height:25%">
+                                        <v-card-title>IP / Port</v-card-title>
+                                        <v-card-text>127.0.0.1 / 443</v-card-text>
+                                    </v-card>
+                                </v-container>
+                            </v-col>
+                        </v-row>
                 </v-tab-item>
             </v-tabs-items>
         </v-main>
@@ -258,7 +293,7 @@
 <!--<script src="./assets/js/vue.js"></script>-->
 <!--<script src="./assets/js/vuetify.js"></script>-->
 <!--<script src="./assets/js/axios.min.js"></script>-->
-<!--<script src="./components/splash.js"></script>-->
+<script src="./components/splash.js"></script>
 <!--<script src="./components/dialog.js"></script>-->
 <script>
     Vue.config.devtools = true;
@@ -276,25 +311,6 @@
         },
     });
 
-    Vue.filter('kb', val => {
-        return Math.floor(val / 1024);
-    });
-    Vue.filter('severity2risk', val => {
-        switch (val) {
-            case 0:
-                return "Unknown";
-            case 1:
-                return "Info";
-            case 2:
-                return "Low";
-            case 3:
-                return "Medium";
-            case 4:
-                return "High";
-            case 5:
-                return "CRITICAL";
-        }
-    })
     const myapp = new Vue({
         el: '#app',
         vuetify: new Vuetify({
@@ -326,7 +342,7 @@
                 drawer: true,
                 files: [],
                 selected: ["Critical", "High", "Medium", "Low", "Info", "Unknown"],
-                tab: null,
+                active_tab: null,
                 uniqueLabel: "## Unique IPs",
                 footerActions: [
                     {title: 'Copy Unique Ip', action: this.copyUniqueIPs},
@@ -402,6 +418,11 @@
             },
             issuesDisabled() {
                 return this.findings.length === 0;
+            },
+            collectedIssues() {
+                if (active_tab != 1) {
+                    return [];
+                }
             }
 
         },
@@ -545,6 +566,27 @@
                         }
                     })
             }
+        }
+    })
+
+
+    Vue.filter('kb', val => {
+        return Math.floor(val / 1024);
+    });
+    Vue.filter('severity2risk', val => {
+        switch (val) {
+            case 0:
+                return "Unknown";
+            case 1:
+                return "Info";
+            case 2:
+                return "Low";
+            case 3:
+                return "Medium";
+            case 4:
+                return "High";
+            case 5:
+                return "CRITICAL";
         }
     })
 </script>
